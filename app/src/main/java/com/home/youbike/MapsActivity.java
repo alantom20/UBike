@@ -18,6 +18,8 @@ import android.os.CountDownTimer;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -51,8 +53,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
-
+public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMarkerClickListener,OnMapReadyCallback {
 
     private static final int REQUEST_CODE_LOCATION = 100;
     private GoogleMap mMap;
@@ -65,6 +66,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private List<Marker> markers =  new ArrayList<>();;
     private TextView timerText;
     private CountDownTimer count;
+    private Toolbar toolbar;
+    private View infoView;
+    private TextView titleText;
+    private Button mapButton;
+    private Button listButton;
+    private String title;
 
 
     @Override
@@ -72,18 +79,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         this.setTheme(R.style.Theme_Youbike);
-
-
         lat = getIntent().getDoubleExtra("lat",0);
         lng = getIntent().getDoubleExtra("lng",0);
+        title = getIntent().getStringExtra("title");
         Log.d(TAG, "onCreate: " + lat + "/" + lng);
 
-        timerText = findViewById(R.id.text_count);
-        Toolbar toolbar = findViewById(R.id.toolbar_map);
+        findViews();
         setSupportActionBar(toolbar);
-
-
-
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -93,6 +95,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 getJSON();
+
+
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -102,14 +106,31 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         };
         timer.schedule(responseTask, 0, 60*1000);
+        listButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MapsActivity.this,BikesActivity.class);
+                startActivity(intent);
+            }
+        });
 
 
     }
+
+    private void findViews() {
+        timerText = findViewById(R.id.text_count);
+        toolbar = findViewById(R.id.toolbar_map);
+        infoView = findViewById(R.id.layout_info);
+        titleText = findViewById(R.id.text_title_map);
+        mapButton = findViewById(R.id.button_googleMap);
+        listButton = findViewById(R.id.button_list);
+    }
+
     public void setupDownCounterTimer(){
         count = new CountDownTimer(60000, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
-                timerText.setText(String.valueOf(millisUntilFinished / 1000) + "秒後自動更新");
+                timerText.setText("  "+String.valueOf(millisUntilFinished / 1000) + "秒後自動更新");
             }
 
             @Override
@@ -134,6 +155,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 getJSON();
+
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -212,7 +234,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         //test data
         for (UBike uBike : uBikes) {
-            Log.d(TAG, "parseJSONObject: " + uBike.getMday());
+          //  Log.d(TAG, "parseJSONObject: " + uBike.getMday());
         }
         Log.d(TAG, "parseJSONObject: " + uBikes.size());
 
@@ -257,6 +279,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void setupMap() {
+        mMap.clear();
         markers.clear();
         for (UBike uBike : uBikes) {
             LatLng latLng = new LatLng(Double.valueOf(uBike.getLat()), Double.valueOf(uBike.getLng()));
@@ -267,10 +290,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         for (Marker marker : markers) {
             if(marker.getPosition().latitude == lat && marker.getPosition().longitude  == lng){
                 marker.showInfoWindow();
+
             }
         }
         mMap.setInfoWindowAdapter(new InfoWindowAdapter(MapsActivity.this));
-
+        mMap.setOnMarkerClickListener(this);
 
     }
 
@@ -281,6 +305,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(lat!=0 & lng!=0){
             LatLng latLng = new LatLng(lat,lng);
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16));
+            infoView.setVisibility(View.VISIBLE);
+            titleText.setText("  "+title);
 
         }else{
             FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(this);
@@ -325,6 +351,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             setupLocation();
 
         }
+    }
+
+
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+       infoView.setVisibility(View.VISIBLE);
+       String title = marker.getTitle();
+       titleText.setText("  "+title);
+
+       return false;
     }
 
 }

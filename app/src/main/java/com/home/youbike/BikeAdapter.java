@@ -74,6 +74,7 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
                 double lng = Double.parseDouble(uBike.getLng());
                 intent.putExtra("lat",lat);
                 intent.putExtra("lng",lng);
+                intent.putExtra("title",uBike.getSna());
                 context.startActivity(intent);
             }
         });

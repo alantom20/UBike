@@ -26,6 +26,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import org.jetbrains.annotations.NotNull;
@@ -63,7 +64,7 @@ public class BikesActivity extends AppCompatActivity {
     private TimerTask responseTask;
     private TextView timerText;
     private CountDownTimer count;
-
+    private Button mapButton;
 
 
     @Override
@@ -75,14 +76,7 @@ public class BikesActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+     
 
         setupDownCounterTimer();
         recyclerView.setHasFixedSize(true);
@@ -103,7 +97,13 @@ public class BikesActivity extends AppCompatActivity {
         };
 
        timer.schedule(responseTask, 0, 60*1000);
-
+       mapButton.setOnClickListener(new View.OnClickListener() {
+           @Override
+           public void onClick(View v) {
+               Intent intent = new Intent(BikesActivity.this,MapsActivity.class);
+               startActivity(intent);
+           }
+       });
 
 
     }
@@ -112,7 +112,7 @@ public class BikesActivity extends AppCompatActivity {
         count = new CountDownTimer(60000, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
-                timerText.setText(String.valueOf(millisUntilFinished/1000) +  "秒後自動更新");
+                timerText.setText("  "+String.valueOf(millisUntilFinished/1000) +  "秒後自動更新");
             }
 
             @Override
@@ -127,6 +127,7 @@ public class BikesActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_bike);
         timerText = findViewById(R.id.timer_text);
+        mapButton = findViewById(R.id.button_map);
     }
 
     @Override
