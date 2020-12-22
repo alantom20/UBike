@@ -4,19 +4,20 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    tools:context=".FavoriteActivity">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_bike"
+        android:id="@+id/recycler_favorite"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/timer_text"
+        app:layout_constraintBottom_toTopOf="@+id/timer_text_favorite"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/toolbar_favorite" />
 
     <TextView
-        android:id="@+id/timer_text"
+        android:id="@+id/timer_text_favorite"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:background="#4AA5ED"
@@ -30,24 +31,26 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <Button
-        android:id="@+id/button_map"
+        android:id="@+id/button_map_favorite"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="地圖模式"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         app:backgroundTint="#03A9F4"
-        app:layout_constraintBottom_toBottomOf="@+id/recycler_bike"
+        app:layout_constraintBottom_toTopOf="@+id/timer_text_favorite"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <Button
-        android:id="@+id/button_favorite"
-        android:layout_width="wrap_content"
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_favorite"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:text="我的最愛"
-        android:textSize="18sp"
-        app:backgroundTint="#03A9F4"
-        app:layout_constraintBottom_toBottomOf="@+id/button_map"
-        app:layout_constraintStart_toEndOf="@+id/button_map" />
+        android:background="#4AA5ED"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="?attr/actionBarTheme"
+        app:title="我的最愛"
+        app:titleTextColor="#FFFFFF"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

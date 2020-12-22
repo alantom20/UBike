@@ -1,12 +1,7 @@
 package com.home.youbike;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,15 +9,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
-import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -48,12 +36,36 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
     @Override
     public void onBindViewHolder(@NonNull BikeHolder holder, int position) {
         UBike uBike = uBikes.get(position);
-       // holder.timeText.setText(uBike.getMday());
-        holder.loveImage.setImageResource(R.drawable.ic_love_empty);
+        if(uBike.isStar()){
+            holder.loveImage.setImageResource(R.drawable.ic_love);
+        }else {
+            holder.loveImage.setImageResource(R.drawable.ic_love_empty);
+        }
+
         holder.loveImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-               holder.loveImage.setImageResource(R.drawable.ic_love);
+                uBike.setStar(!uBike.isStar());
+                if(uBike.isStar()){
+                    holder.loveImage.setImageResource(R.drawable.ic_love);
+                    Bike bike = new Bike(uBike.getSno(),true);
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            BikeDatabase.getInstance(context).bikeDao().insert(bike);
+                        }
+                    }).start();
+
+                }else {
+                    holder.loveImage.setImageResource(R.drawable.ic_love_empty);
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Bike result = BikeDatabase.getInstance(context).bikeDao().findByBike(uBike.getSno());
+                            BikeDatabase.getInstance(context).bikeDao().delete(result);
+                        }
+                    }).start();
+                }
             }
         });
         holder.titleText.setText(uBike.getSna());
@@ -75,6 +87,7 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
                 intent.putExtra("lat",lat);
                 intent.putExtra("lng",lng);
                 intent.putExtra("title",uBike.getSna());
+                intent.putExtra("distance",uBike.getDistance());
                 context.startActivity(intent);
             }
         });
@@ -101,7 +114,7 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
             distanceText = itemView.findViewById(R.id.text_distance);
             lendText = itemView.findViewById(R.id.text_lend);
             parkingText = itemView.findViewById(R.id.text_parking);
-            //timeText =  itemView.findViewById(R.id.time);
+
 
         }
     }

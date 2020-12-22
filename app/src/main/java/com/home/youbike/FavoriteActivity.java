@@ -1,16 +1,9 @@
 package com.home.youbike;
 
-
-import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 
-import android.content.pm.PackageManager;
 import android.location.Location;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Bundle;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -20,11 +13,9 @@ import com.google.android.gms.tasks.Task;
 
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -55,7 +46,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class BikesActivity extends AppCompatActivity {
+
+public class FavoriteActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_LOCATION = 50;
     private String TAG = BikesActivity.class.getSimpleName();
@@ -72,47 +64,24 @@ public class BikesActivity extends AppCompatActivity {
     private TextView timerText;
     private CountDownTimer count;
     private Button mapButton;
-    private Button favoriteButton;
+    private List<UBike> newList = new ArrayList<>();
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_bikes);
+        setContentView(R.layout.activity_favorite);
+
         findViews();
         setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+
+
+
         setupDownCounterTimer();
-        //check internet
-        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
-        if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() == NetworkInfo.State.CONNECTED ||
-                connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() == NetworkInfo.State.CONNECTED) {
-            //we are connected to a network
-
-        }
-        else{
-            final AlertDialog.Builder builderSingle = new AlertDialog.Builder(BikesActivity.this);
-            builderSingle.setIcon(R.drawable.error);
-            builderSingle.setTitle("無法連結到網路");
-
-            builderSingle.setPositiveButton("確定", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    finish();
-                }
-            });
-            builderSingle.setCancelable(false);
-            builderSingle.show();
-        }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_LOCATION);
-            return;
-        }
-
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
         responseTask = new TimerTask(){
             @Override
             public void run() {
@@ -128,22 +97,14 @@ public class BikesActivity extends AppCompatActivity {
             }
         };
 
-       timer.schedule(responseTask, 0, 60*1000);
-       mapButton.setOnClickListener(new View.OnClickListener() {
-           @Override
-           public void onClick(View v) {
-               Intent intent = new Intent(BikesActivity.this,MapsActivity.class);
-               startActivity(intent);
-           }
-       });
-        favoriteButton.setOnClickListener(new View.OnClickListener() {
+        timer.schedule(responseTask, 0, 5*1000);
+        mapButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(BikesActivity.this,FavoriteActivity.class);
+                Intent intent = new Intent(FavoriteActivity.this,MapsActivity.class);
                 startActivity(intent);
             }
         });
-
 
     }
 
@@ -163,11 +124,10 @@ public class BikesActivity extends AppCompatActivity {
     }
 
     private void findViews() {
-        toolbar = findViewById(R.id.toolbar);
-        recyclerView = findViewById(R.id.recycler_bike);
-        timerText = findViewById(R.id.timer_text);
-        mapButton = findViewById(R.id.button_map);
-        favoriteButton = findViewById(R.id.button_favorite);
+        toolbar = findViewById(R.id.toolbar_favorite);
+        recyclerView = findViewById(R.id.recycler_favorite);
+        timerText = findViewById(R.id.timer_text_favorite);
+        mapButton = findViewById(R.id.button_map_favorite);
     }
 
     @Override
@@ -218,16 +178,16 @@ public class BikesActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                Log.d(TAG, "onResponse: " + json);
+                 Log.d(TAG, "onResponse: " + json);
                 JSONObject object = parseJSON(json);
                 parseJSONObject(object);
-                Log.d(TAG, "onResponse: " + latitude + "/" +longitude);
+                  Log.d(TAG, "onResponse: " + latitude + "/" +longitude);
 
                 for (UBike uBike : uBikes) {
                     float distance = distanceBetween(Double.parseDouble(uBike.getLat()),Double.parseDouble(uBike.getLng()),latitude,longitude);
                     uBike.setDistance(distance);
                 }
-                List<Bike> results = BikeDatabase.getInstance(BikesActivity.this).bikeDao().getAll();
+                List<Bike> results = BikeDatabase.getInstance(FavoriteActivity.this).bikeDao().getAll();
                 for(UBike uBike: uBikes){
                     for (Bike result : results) {
                         if(uBike.getSno().equals(result.sno)){
@@ -235,21 +195,35 @@ public class BikesActivity extends AppCompatActivity {
                         }
                     }
                 }
-                Collections.sort(uBikes, new bikeSort());
+                Collections.sort(newList, new bikeSort());
 
+                int i = 0;
+                for (UBike uBike : uBikes) {
+                    if(flag){
+                        if(uBike.isStar()){
+                            newList.add(uBike);
+                    }
+                    }else {
+                        if(uBike.isStar()){
+                            newList.set(i,uBike);
+                            i++;
+                        }
+                    }
+
+                }
 
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         if(flag) {
-
-                            adapter = new BikeAdapter(uBikes , BikesActivity.this);
+                            adapter = new BikeAdapter(newList , FavoriteActivity.this);
                             recyclerView.setAdapter(adapter);
                             flag = false;
                         }else {
-                           adapter.notifyDataSetChanged();
+                            adapter.notifyDataSetChanged();
 
                         }
+
 
                     }
                 });
@@ -332,88 +306,48 @@ public class BikesActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     public void getMyLocation() {
-
         FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient( this);
         client.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
 
             @Override
-                public void onComplete(@NonNull Task<Location> task) {
-                    if(task.isSuccessful()){
-                        Location location = task.getResult();
-                        Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
-                        longitude = location.getLongitude();
-                        latitude = location.getLatitude();
+            public void onComplete(@NonNull Task<Location> task) {
+                if(task.isSuccessful()){
+                    Location location = task.getResult();
+                    Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
+                    longitude = location.getLongitude();
+                    latitude = location.getLatitude();
 
-                    }
                 }
-            });
+            }
+        });
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_bike,menu);
+        getMenuInflater().inflate(R.menu.manu_favorite,menu);
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()){
-            case  R.id.item_map:{
+            case  R.id.map_item_favorite:{
                 Intent intent = new Intent(this,MapsActivity.class);
                 startActivity(intent);
             }
-           /* case  android.R.id.home :{
+            case  android.R.id.home :{
                 finish();
-            }*/
+            }
         }
         return super.onOptionsItemSelected(item);
     }
 
     class bikeSort implements Comparator<UBike> {
 
+
         @Override
         public int compare(UBike a, UBike b) {
             return Float.compare(a.getDistance(), b.getDistance());
         }
     }
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if(requestCode == REQUEST_CODE_LOCATION &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED){
-            recyclerView.setHasFixedSize(true);
-            recyclerView.setLayoutManager(new LinearLayoutManager(this));
-            responseTask = new TimerTask(){
-                @Override
-                public void run() {
-                    getMyLocation();
-                    getJSON();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            count.start();
-                        }
-                    });
-                }
-            };
-            timer.schedule(responseTask, 0, 60*1000);
-            mapButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(BikesActivity.this,MapsActivity.class);
-                    startActivity(intent);
-                }
-            });
-            favoriteButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(BikesActivity.this,FavoriteActivity.class);
-                    startActivity(intent);
-                }
-            });
-
-        }
-    }
-
-
 }

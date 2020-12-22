@@ -4,6 +4,6 @@
 
     <item
         android:id="@+id/item_list"
-        android:title="清單模式" />
+        android:title="列表模式" />
 
 </menu>

@@ -20,6 +20,11 @@ public class UBike {
     private String bemp;
     private String act;
     private float distance = 0.0f;
+    private boolean star = false;
+
+
+
+
 
 
     public UBike() {
@@ -67,6 +72,14 @@ public class UBike {
             e.printStackTrace();
         }
 
+    }
+
+    public boolean isStar() {
+        return star;
+    }
+
+    public void setStar(boolean star) {
+        this.star = star;
     }
 
 
