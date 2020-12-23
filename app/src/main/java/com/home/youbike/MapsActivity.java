@@ -29,6 +29,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
 
 import com.google.android.gms.maps.model.Marker;
@@ -100,20 +101,8 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(MapsActivity.this::onMapReady);
         setupDownCounterTimer();
-        final TimerTask responseTask = new TimerTask(){
-            @Override
-            public void run() {
-                getMyLocation();
-                getJSON();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        count.start();
-                    }
-                });
-            }
-        };
-        timer.schedule(responseTask, 0, 60*1000);
+
+
         listButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -121,6 +110,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                 startActivity(intent);
             }
         });
+
 
 
     }
@@ -203,6 +193,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+
                         setupMap();
 
                     }
@@ -240,9 +231,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
             e.printStackTrace();
         }
         //test data
-        for (UBike uBike : uBikes) {
-          //  Log.d(TAG, "parseJSONObject: " + uBike.getMday());
-        }
+
         Log.d(TAG, "parseJSONObject: " + uBikes.size());
 
 
@@ -273,6 +262,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+
         // Add a marker in Sydney and move the camera
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -281,25 +271,36 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
             return;
         }
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(25.033976,121.5623502), 16));
-        setupLocation();
+        setupLocation(); //設定初始位置
         setupMap();
+        final TimerTask responseTask = new TimerTask(){
+            @Override
+            public void run() {
+                getMyLocation();
+                getJSON();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        count.start();
+                    }
+                });
+            }
+        };
+        timer.schedule(responseTask, 0, 60*1000);
+
     }
 
     private void setupMap() {
-        if(flag){
-            flag  = false;
-        }else{
+
             mMap.clear();
             markers.clear();
-        }
+
 
         for (UBike uBike : uBikes) {
             LatLng latLng = new LatLng(Double.valueOf(uBike.getLat()), Double.valueOf(uBike.getLng()));
-            if(mMap != null && latLng!=null & uBike!=null){
-                Marker marker =  mMap.addMarker(new MarkerOptions().position(latLng).title(uBike.getSna())
+            Marker marker =  mMap.addMarker(new MarkerOptions().position(latLng).title(uBike.getSna())
                         .snippet( "可借車輛:"+ uBike.getSbi() + "\n" + "可停空位:" + uBike.getBemp()));
-                markers.add(marker);
-            }
+            markers.add(marker);
 
         }
         for (Marker marker : markers) {
@@ -308,7 +309,9 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
             }
         }
+
         mMap.setInfoWindowAdapter(new InfoWindowAdapter(MapsActivity.this));
+
         mMap.setOnMarkerClickListener(this);
 
     }
@@ -317,6 +320,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private void setupLocation() {
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setZoomControlsEnabled(true);
+        mMap.getUiSettings().setMapToolbarEnabled(false);
         if(lat!=0 & lng!=0){
             LatLng latLng = new LatLng(lat,lng);
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16));
@@ -346,7 +350,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         titleText.setText(title);
         if (distance >= 1000) {
             BigDecimal f = new BigDecimal(distance / 1000);
-            String result =f.setScale(2, BigDecimal.ROUND_HALF_UP).toString();
+            String result =f.setScale(2, BigDecimal.ROUND_HALF_UP).toString(); //取小數後兩位
             distanceText.setText(result + "公里");
         }else{
             distanceText.setText(String.valueOf(distance) + "公尺");
@@ -354,7 +358,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         mapButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String uri = "http://maps.google.com/maps?&daddr=" + String.valueOf(lat)+ ","+ String.valueOf(lng) +  "&dirflg=w";
+                String uri = "http://maps.google.com/maps?&daddr=" + String.valueOf(lat)+ ","+ String.valueOf(lng) +  "&dirflg=w"; //googleMap設定值
                 Intent mapIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
                 mapIntent.setPackage("com.google.android.apps.maps");
                 if (mapIntent.resolveActivity(getPackageManager()) != null) {
@@ -387,7 +391,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                 endLatitude, endLongitude, results);
 
         BigDecimal f = new BigDecimal(results[0]);
-        float result = f.setScale(1,BigDecimal.ROUND_HALF_UP).floatValue();
+        float result = f.setScale(1,BigDecimal.ROUND_HALF_UP).floatValue(); //取小數後一位
         Log.d(TAG, "distanceBetween: " + result);
         return result;
     }
@@ -430,7 +434,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         double marketLongitude = marker.getPosition().longitude;
         titleText.setText(title);
         if(myLatLng != null){
-            float MarkDistance = distanceBetween(myLatLng.latitude, myLatLng.longitude,
+            float MarkDistance = distanceBetween(myLatLng.latitude, myLatLng.longitude, //取得距離
                     marketLatitude,  marketLongitude);
             Log.d(TAG, "onMarkerClick: " + MarkDistance);
             if (MarkDistance >= 1000) {
@@ -456,5 +460,6 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
         return false;
     }
+
 
 }

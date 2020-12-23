@@ -5,22 +5,22 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class UBike {
-    private String sno;
-    private String sna;
-    private String tot;
-    private String sbi;
-    private String sarea;
-    private String mday;
-    private String lat;
-    private String lng;
-    private String ar;
-    private String sareaen;
-    private String snaen;
-    private String aren;
-    private String bemp;
-    private String act;
-    private float distance = 0.0f;
-    private boolean star = false;
+    private String sno; //站點代號
+    private String sna; //場站中文名稱
+    private String tot; //場站總停車格
+    private String sbi; //場站目前車輛數量
+    private String sarea; //場站區域
+    private String mday; //資料更新時間
+    private String lat; //緯度
+    private String lng; //經度
+    private String ar; //地點
+    private String sareaen; //場站區域英文
+    private String snaen; //場站名稱英文
+    private String aren; //地址英文
+    private String bemp; //空位數量
+    private String act; //全站禁用狀態
+    private float distance = 0.0f; //距離
+    private boolean star = false;  //我的最愛
 
 
 

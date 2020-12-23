@@ -87,22 +87,21 @@ public class BikesActivity extends AppCompatActivity {
         if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() == NetworkInfo.State.CONNECTED ||
                 connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() == NetworkInfo.State.CONNECTED) {
             //we are connected to a network
-
         }
         else{
             final AlertDialog.Builder builderSingle = new AlertDialog.Builder(BikesActivity.this);
-            builderSingle.setIcon(R.drawable.error);
-            builderSingle.setTitle("無法連結到網路");
+            builderSingle.setIcon(R.drawable.error)
+                    .setTitle("無法連結到網路")
+                    .setCancelable(false)
+                    .setPositiveButton("確定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    }).show();
 
-            builderSingle.setPositiveButton("確定", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    finish();
-                }
-            });
-            builderSingle.setCancelable(false);
-            builderSingle.show();
         }
+        //check location
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
@@ -223,26 +222,31 @@ public class BikesActivity extends AppCompatActivity {
                 parseJSONObject(object);
                 Log.d(TAG, "onResponse: " + latitude + "/" +longitude);
 
+                //addDistance
                 for (UBike uBike : uBikes) {
                     float distance = distanceBetween(Double.parseDouble(uBike.getLat()),Double.parseDouble(uBike.getLng()),latitude,longitude);
                     uBike.setDistance(distance);
                 }
+
+                //getDatabaseList
                 List<Bike> results = BikeDatabase.getInstance(BikesActivity.this).bikeDao().getAll();
+
+
                 for(UBike uBike: uBikes){
                     for (Bike result : results) {
-                        if(uBike.getSno().equals(result.sno)){
+                        if(uBike.getSno().equals(result.sno)){  //資料庫裡如果有這筆資料就設為true
                             uBike.setStar(true);
                         }
                     }
                 }
-                Collections.sort(uBikes, new bikeSort());
 
+                //依距離排序
+                Collections.sort(uBikes, new bikeSort());
 
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         if(flag) {
-
                             adapter = new BikeAdapter(uBikes , BikesActivity.this);
                             recyclerView.setAdapter(adapter);
                             flag = false;
@@ -253,7 +257,6 @@ public class BikesActivity extends AppCompatActivity {
 
                     }
                 });
-
 
             }
         });
@@ -287,12 +290,10 @@ public class BikesActivity extends AppCompatActivity {
                 }
             }
 
-
-
-
-
         } catch (JSONException e) {
             e.printStackTrace();
+            parseJSONObject(object);
+
         }
         //test data
         Log.d(TAG, "parseJSONObject: " + uBikes.size());
@@ -322,7 +323,7 @@ public class BikesActivity extends AppCompatActivity {
                 endLatitude, endLongitude, results);
 
         BigDecimal f = new BigDecimal(results[0]);
-        float result = f.setScale(1,BigDecimal.ROUND_HALF_UP).floatValue();
+        float result = f.setScale(1,BigDecimal.ROUND_HALF_UP).floatValue(); //取小數後一位
         Log.d(TAG, "distanceBetween: " + result);
         return result;
     }
@@ -369,7 +370,7 @@ public class BikesActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    class bikeSort implements Comparator<UBike> {
+    class bikeSort implements Comparator<UBike> {      //依距離做排序
 
         @Override
         public int compare(UBike a, UBike b) {
@@ -411,6 +412,7 @@ public class BikesActivity extends AppCompatActivity {
                     startActivity(intent);
                 }
             });
+
 
         }
     }

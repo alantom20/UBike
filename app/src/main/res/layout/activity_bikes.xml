@@ -17,7 +17,7 @@
             android:layout_height="?attr/actionBarSize"
             android:background="#4AA5ED"
             app:popupTheme="@style/Theme.Youbike.PopupOverlay"
-            app:title="附近站點" />
+            app:title="台北YouBike" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

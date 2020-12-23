@@ -97,7 +97,7 @@ public class FavoriteActivity extends AppCompatActivity {
             }
         };
 
-        timer.schedule(responseTask, 0, 5*1000);
+        timer.schedule(responseTask, 0, 60*1000);
         mapButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -187,30 +187,31 @@ public class FavoriteActivity extends AppCompatActivity {
                     float distance = distanceBetween(Double.parseDouble(uBike.getLat()),Double.parseDouble(uBike.getLng()),latitude,longitude);
                     uBike.setDistance(distance);
                 }
-                List<Bike> results = BikeDatabase.getInstance(FavoriteActivity.this).bikeDao().getAll();
+                List<Bike> results = BikeDatabase.getInstance(FavoriteActivity.this).bikeDao().getAll();  //取得資料庫list
                 for(UBike uBike: uBikes){
                     for (Bike result : results) {
-                        if(uBike.getSno().equals(result.sno)){
+                        if(uBike.getSno().equals(result.sno)){  //如果資料庫有這筆資料star就設為true
                             uBike.setStar(true);
                         }
                     }
                 }
-                Collections.sort(newList, new bikeSort());
+
 
                 int i = 0;
                 for (UBike uBike : uBikes) {
-                    if(flag){
+                    if(flag){                      //第一次執行
                         if(uBike.isStar()){
-                            newList.add(uBike);
+                            newList.add(uBike);   //將star為true的資料加入新的list
                     }
                     }else {
-                        if(uBike.isStar()){
+                        if(uBike.isStar()){  //第二次執行
                             newList.set(i,uBike);
                             i++;
                         }
                     }
 
                 }
+                Collections.sort(newList, new bikeSort()); //依距離做排序
 
                 runOnUiThread(new Runnable() {
                     @Override
