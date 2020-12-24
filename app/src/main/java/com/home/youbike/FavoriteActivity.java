@@ -10,6 +10,8 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 
 import androidx.annotation.NonNull;
@@ -39,6 +41,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -51,7 +54,6 @@ public class FavoriteActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_LOCATION = 50;
     private String TAG = BikesActivity.class.getSimpleName();
-    private OkHttpClient client = new OkHttpClient();
     private List<UBike> uBikes = new ArrayList<>();
     private Toolbar toolbar;
     private RecyclerView recyclerView;
@@ -65,6 +67,8 @@ public class FavoriteActivity extends AppCompatActivity {
     private CountDownTimer count;
     private Button mapButton;
     private List<UBike> newList = new ArrayList<>();
+    private List<UBike> uBikesNewTaipei;
+    private int listIndex;
 
 
     @Override
@@ -77,11 +81,11 @@ public class FavoriteActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
 
-
-
         setupDownCounterTimer();
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new BikeAdapter(newList , FavoriteActivity.this);
+        recyclerView.setAdapter(adapter);
         responseTask = new TimerTask(){
             @Override
             public void run() {
@@ -160,33 +164,71 @@ public class FavoriteActivity extends AppCompatActivity {
     }
 
     private void getJSON() {
-        Request request = new Request.Builder()
+        CountDownLatch latch = new CountDownLatch(1);  //指定等待多少執行緒
+        Request requestTaipei = new Request.Builder()
                 .url("https://tcgbusfs.blob.core.windows.net/blobyoubike/YouBikeTP.json")
                 .build();
-        client.newCall(request).enqueue(new Callback() {
+        Request requestNewTaipei = new Request.Builder()
+                .url("https://data.ntpc.gov.tw/api/datasets/71CD1490-A2DF-4198-BEF1-318479775E8A/json?page=0&size=10000")
+                .build();
+        OkHttpClient client = new OkHttpClient();
+        client.newCall(requestNewTaipei).enqueue(new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
 
             }
 
             @Override
-            public void onResponse(@NotNull Call call, @NotNull Response response) {
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                String newTaipeiJson = response.body().string();
+                Log.d(TAG, "onResponse2: " + newTaipeiJson);
 
+                uBikesNewTaipei = new Gson().fromJson(newTaipeiJson,
+                         new TypeToken<ArrayList<UBike>>(){}.getType());
+                latch.countDown();
+                Log.d(TAG, "onResponse2: " + uBikesNewTaipei.size());
+
+            }
+        });
+        OkHttpClient client1 = new OkHttpClient();
+        client1.newCall(requestTaipei).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response)  throws IOException {
                 String json = null;
-                try {
-                    json = response.body().string();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                 Log.d(TAG, "onResponse: " + json);
+
+                json = response.body().string();
+
+                Log.d(TAG, "onResponse: " + json);
                 JSONObject object = parseJSON(json);
                 parseJSONObject(object);
-                  Log.d(TAG, "onResponse: " + latitude + "/" +longitude);
+                Log.d(TAG, "onResponse: " + latitude + "/" +longitude);
+                try {
+                    latch.await();                //取得完下一筆資料再往下執行
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                Log.d(TAG, "onResponse1:" + uBikes.size());
+                if(flag){
+                    uBikes.addAll(uBikesNewTaipei);
+                }else{
+                    for (UBike uBike : uBikesNewTaipei) {
+                        uBikes.set(listIndex,uBike);
+                        listIndex++;
+                    }
+                }
+                Log.d(TAG, "onResponse1: " + uBikes.size());
 
+                 //設定距離
                 for (UBike uBike : uBikes) {
                     float distance = distanceBetween(Double.parseDouble(uBike.getLat()),Double.parseDouble(uBike.getLng()),latitude,longitude);
                     uBike.setDistance(distance);
                 }
+
                 List<Bike> results = BikeDatabase.getInstance(FavoriteActivity.this).bikeDao().getAll();  //取得資料庫list
                 for(UBike uBike: uBikes){
                     for (Bike result : results) {
@@ -200,8 +242,8 @@ public class FavoriteActivity extends AppCompatActivity {
                 int i = 0;
                 for (UBike uBike : uBikes) {
                     if(flag){                      //第一次執行
-                        if(uBike.isStar()){
-                            newList.add(uBike);   //將star為true的資料加入新的list
+                        if(uBike.isStar()){         //將star為true的資料加入新的list
+                            newList.add(uBike);
                     }
                     }else {
                         if(uBike.isStar()){  //第二次執行
@@ -217,14 +259,12 @@ public class FavoriteActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         if(flag) {
-                            adapter = new BikeAdapter(newList , FavoriteActivity.this);
-                            recyclerView.setAdapter(adapter);
+                            adapter.notifyDataSetChanged();
                             flag = false;
                         }else {
                             adapter.notifyDataSetChanged();
 
                         }
-
 
                     }
                 });
@@ -241,7 +281,7 @@ public class FavoriteActivity extends AppCompatActivity {
 
         try {
             JSONObject object1 = object.getJSONObject("retVal");
-            int listIndex = 0;
+            listIndex = 0;
             for (int i = 0; i <= 404; i++) {
 
                 int n = 0;
@@ -263,17 +303,11 @@ public class FavoriteActivity extends AppCompatActivity {
             }
 
 
-
-
-
         } catch (JSONException e) {
             e.printStackTrace();
         }
         //test data
         Log.d(TAG, "parseJSONObject: " + uBikes.size());
-
-
-
 
     }
 

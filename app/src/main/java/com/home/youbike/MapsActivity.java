@@ -36,6 +36,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
@@ -45,11 +47,13 @@ import org.json.JSONObject;
 import java.io.IOException;
 
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.CountDownLatch;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -63,7 +67,6 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private GoogleMap mMap;
     private String TAG = MapsActivity.class.getSimpleName();
     private List<UBike> uBikes = new ArrayList<>();
-    private OkHttpClient client = new OkHttpClient();
     private Timer timer = new Timer();
     private double lat;
     private double lng;
@@ -79,7 +82,8 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private LatLng myLatLng;
     private TextView distanceText;
     private float distance;
-    boolean flag = true;
+    private List<UBike> uBikesNewTaipei;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -169,10 +173,35 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
 
     private void getJSON() {
-        Request request = new Request.Builder()
+        CountDownLatch latch = new CountDownLatch(1);
+        Request requestTaipei = new Request.Builder()
                 .url("https://tcgbusfs.blob.core.windows.net/blobyoubike/YouBikeTP.json")
                 .build();
-        client.newCall(request).enqueue(new Callback() {
+        Request requestNewTaipei = new Request.Builder()
+                .url("https://data.ntpc.gov.tw/api/datasets/71CD1490-A2DF-4198-BEF1-318479775E8A/json?page=0&size=10000")
+                .build();
+        OkHttpClient client = new OkHttpClient();
+        client.newCall(requestNewTaipei).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                String newTaipeiJson = response.body().string();
+                Log.d(TAG, "onResponse2: " + newTaipeiJson);
+                uBikesNewTaipei = new Gson().fromJson(newTaipeiJson,
+                        new TypeToken<ArrayList<UBike>>(){}.getType());
+                latch.countDown();
+                Log.d(TAG, "onResponse2: " + uBikesNewTaipei.size());
+
+            }
+        });
+
+        OkHttpClient client1 = new OkHttpClient();
+        client1.newCall(requestTaipei).enqueue(new Callback() {
+            private String taipeiJson;
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
 
@@ -180,20 +209,26 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) {
-
-                String json = null;
+                taipeiJson = null;
                 try {
-                    json = response.body().string();
+                    taipeiJson = response.body().string();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                Log.d(TAG, "onResponse: " + json);
-                JSONObject object = parseJSON(json);
+                Log.d(TAG, "onResponse: " + taipeiJson);
+                JSONObject object = parseJSON(taipeiJson);
                 parseJSONObject(object);
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                Log.d(TAG, "onResponse: " + uBikes.size());
+                uBikes.addAll(uBikesNewTaipei);
+                Log.d(TAG, "onResponse: " + uBikes.size());
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-
                         setupMap();
 
                     }
@@ -203,8 +238,6 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
             }
         });
     }
-
-
 
     private void parseJSONObject(JSONObject object) {
         uBikes.clear();
@@ -221,7 +254,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                     JSONObject object2 = object1.getJSONObject(final_string);
                     UBike uBike = new UBike(object2);
                     uBikes.add(uBike);
-                    Log.d(TAG, "onResponse: " + object2.getString("sna"));
+                    Log.d(TAG, "parseJSONObject: " + object2.getString("sna"));
                 }
             }
 

@@ -17,6 +17,8 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 
 import androidx.annotation.NonNull;
@@ -48,6 +50,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -59,7 +62,6 @@ public class BikesActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_LOCATION = 50;
     private String TAG = BikesActivity.class.getSimpleName();
-    private OkHttpClient client = new OkHttpClient();
     private List<UBike> uBikes = new ArrayList<>();
     private Toolbar toolbar;
     private RecyclerView recyclerView;
@@ -73,6 +75,8 @@ public class BikesActivity extends AppCompatActivity {
     private CountDownTimer count;
     private Button mapButton;
     private Button favoriteButton;
+    private List<UBike> uBikesNewTaipei = new ArrayList<>();
+    private int listIndex;
 
 
     @Override
@@ -82,33 +86,8 @@ public class BikesActivity extends AppCompatActivity {
         findViews();
         setSupportActionBar(toolbar);
         setupDownCounterTimer();
-        //check internet
-        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
-        if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() == NetworkInfo.State.CONNECTED ||
-                connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() == NetworkInfo.State.CONNECTED) {
-            //we are connected to a network
-        }
-        else{
-            final AlertDialog.Builder builderSingle = new AlertDialog.Builder(BikesActivity.this);
-            builderSingle.setIcon(R.drawable.error)
-                    .setTitle("無法連結到網路")
-                    .setCancelable(false)
-                    .setPositiveButton("確定", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            finish();
-                        }
-                    }).show();
-
-        }
-        //check location
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_LOCATION);
-            return;
-        }
-
+        if (checkPermissions()) return;
+        //recycler
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -126,7 +105,6 @@ public class BikesActivity extends AppCompatActivity {
 
             }
         };
-
        timer.schedule(responseTask, 0, 60*1000);
        mapButton.setOnClickListener(new View.OnClickListener() {
            @Override
@@ -135,7 +113,7 @@ public class BikesActivity extends AppCompatActivity {
                startActivity(intent);
            }
        });
-        favoriteButton.setOnClickListener(new View.OnClickListener() {
+       favoriteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(BikesActivity.this,FavoriteActivity.class);
@@ -144,6 +122,34 @@ public class BikesActivity extends AppCompatActivity {
         });
 
 
+    }
+
+    private boolean checkPermissions() {
+        //check internet
+        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() != NetworkInfo.State.CONNECTED &&
+                connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() != NetworkInfo.State.CONNECTED) {
+            final AlertDialog.Builder builderSingle = new AlertDialog.Builder(BikesActivity.this);
+            builderSingle.setIcon(R.drawable.error)
+                    .setTitle("無法連結到網路")
+                    .setCancelable(false)
+                    .setPositiveButton("確定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    }).show();
+            return true;
+        }
+
+        //check location
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_LOCATION);
+            return true;
+        }
+        return false;
     }
 
     public void setupDownCounterTimer(){
@@ -199,10 +205,35 @@ public class BikesActivity extends AppCompatActivity {
     }
 
     private void getJSON() {
-        Request request = new Request.Builder()
+        CountDownLatch latch = new CountDownLatch(1);  //指定等待多少執行緒
+
+        Request requestTaipei = new Request.Builder()
                 .url("https://tcgbusfs.blob.core.windows.net/blobyoubike/YouBikeTP.json")
                 .build();
-        client.newCall(request).enqueue(new Callback() {
+        Request requestNewTaipei = new Request.Builder()
+                .url("https://data.ntpc.gov.tw/api/datasets/71CD1490-A2DF-4198-BEF1-318479775E8A/json?page=0&size=10000")
+                .build();
+        OkHttpClient client = new OkHttpClient();
+        client.newCall(requestNewTaipei).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                String newTaipeiJson = response.body().string();
+                Log.d(TAG, "onResponse2: " + newTaipeiJson);
+
+                uBikesNewTaipei = new Gson().fromJson(newTaipeiJson,
+                        new TypeToken<ArrayList<UBike>>(){}.getType());
+                latch.countDown();
+                Log.d(TAG, "onResponse2: " + uBikesNewTaipei.size());
+
+            }
+        });
+        OkHttpClient client1 = new OkHttpClient();
+        client1.newCall(requestTaipei).enqueue(new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
 
@@ -217,10 +248,27 @@ public class BikesActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                Log.d(TAG, "onResponse: " + json);
+                Log.d(TAG, "onResponse1: " + json);
+                //取得第二筆資料
                 JSONObject object = parseJSON(json);
                 parseJSONObject(object);
-                Log.d(TAG, "onResponse: " + latitude + "/" +longitude);
+                Log.d(TAG, "onResponse1: " + latitude + "/" +longitude);
+                try {
+                    latch.await();               //取得完下一筆資料再往下執行
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                Log.d(TAG, "onResponse1:" + uBikes.size());
+                //加上第二筆資料
+                if(flag){
+                    uBikes.addAll(uBikesNewTaipei);
+                }else{
+                    for (UBike uBike : uBikesNewTaipei) {
+                        uBikes.set(listIndex,uBike);
+                        listIndex++;
+                    }
+                }
+                Log.d(TAG, "onResponse1: " + uBikes.size());
 
                 //addDistance
                 for (UBike uBike : uBikes) {
@@ -239,6 +287,8 @@ public class BikesActivity extends AppCompatActivity {
                         }
                     }
                 }
+
+
 
                 //依距離排序
                 Collections.sort(uBikes, new bikeSort());
@@ -269,7 +319,7 @@ public class BikesActivity extends AppCompatActivity {
 
         try {
             JSONObject object1 = object.getJSONObject("retVal");
-            int listIndex = 0;
+            listIndex = 0;
             for (int i = 0; i <= 404; i++) {
 
                 int n = 0;
@@ -289,6 +339,7 @@ public class BikesActivity extends AppCompatActivity {
                     }
                 }
             }
+
 
         } catch (JSONException e) {
             e.printStackTrace();

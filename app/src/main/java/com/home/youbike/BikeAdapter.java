@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -13,12 +14,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
     private static final String TAG = BikeAdapter.class.getSimpleName();
     Context context;
-    List<UBike> uBikes;
+    List<UBike> uBikes = new ArrayList<>();
     public BikeAdapter(List<UBike> uBikes,Context context) {
         this.context = context;
         this.uBikes = uBikes;
@@ -58,6 +60,8 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
 
                 }else {
                     holder.loveImage.setImageResource(R.drawable.ic_love_empty);
+                    notifyItemRemoved(holder.getAdapterPosition());
+                    uBikes.remove(position);
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
