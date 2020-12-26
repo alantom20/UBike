@@ -29,7 +29,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.UiSettings;
+
 import com.google.android.gms.maps.model.LatLng;
 
 import com.google.android.gms.maps.model.Marker;
@@ -47,12 +47,12 @@ import org.json.JSONObject;
 import java.io.IOException;
 
 import java.math.BigDecimal;
-import java.net.URL;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.BlockingDeque;
+
 import java.util.concurrent.CountDownLatch;
 
 import okhttp3.Call;
@@ -83,6 +83,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private TextView distanceText;
     private float distance;
     private List<UBike> uBikesNewTaipei;
+    private List<UBike> updateList;
 
 
     @Override
@@ -118,6 +119,36 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
 
     }
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+
+        // Add a marker in Sydney and move the camera
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_LOCATION);
+            return;
+        }
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(25.033976,121.5623502), 16));
+        setupLocation(); //設定初始位置
+        setupMap();
+        final TimerTask responseTask = new TimerTask(){
+            @Override
+            public void run() {
+                getMyLocation();
+                getJSON();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        count.start();
+                    }
+                });
+            }
+        };
+        timer.schedule(responseTask, 0, 60*1000);
+
+    }
 
     private void findViews() {
         timerText = findViewById(R.id.text_count);
@@ -144,32 +175,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        timer.cancel();
-        count.cancel();
-    }
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        Timer timer = new Timer();
-        TimerTask responseTask = new TimerTask(){
-            @Override
-            public void run() {
-                getJSON();
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        count.start();
-                    }
-                });
-            }
-        };
-
-        timer.schedule(responseTask, 0, 60*1000);
-    }
 
 
     private void getJSON() {
@@ -193,8 +199,16 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                 Log.d(TAG, "onResponse2: " + newTaipeiJson);
                 uBikesNewTaipei = new Gson().fromJson(newTaipeiJson,
                         new TypeToken<ArrayList<UBike>>(){}.getType());
+                for (int i = 0; i < uBikesNewTaipei.size()-1; i++) {
+                    String act = uBikesNewTaipei.get(i).getAct();
+                    if(act.equals("0")){
+                        uBikesNewTaipei.remove(i);
+                    }
+                }
+                updateList = uBikesNewTaipei;
+
                 latch.countDown();
-                Log.d(TAG, "onResponse2: " + uBikesNewTaipei.size());
+                Log.d(TAG, "onResponse2: " + updateList.size());
 
             }
         });
@@ -224,7 +238,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                     e.printStackTrace();
                 }
                 Log.d(TAG, "onResponse: " + uBikes.size());
-                uBikes.addAll(uBikesNewTaipei);
+                uBikes.addAll(updateList);
                 Log.d(TAG, "onResponse: " + uBikes.size());
                 runOnUiThread(new Runnable() {
                     @Override
@@ -253,7 +267,9 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                 if(object1.has(final_string) && !object1.isNull(final_string)){ //判斷是否有這物件
                     JSONObject object2 = object1.getJSONObject(final_string);
                     UBike uBike = new UBike(object2);
-                    uBikes.add(uBike);
+                    if(uBike.getAct().equals("1")){
+                        uBikes.add(uBike);
+                    }
                     Log.d(TAG, "parseJSONObject: " + object2.getString("sna"));
                 }
             }
@@ -292,43 +308,11 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
      */
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_LOCATION);
-            return;
-        }
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(25.033976,121.5623502), 16));
-        setupLocation(); //設定初始位置
-        setupMap();
-        final TimerTask responseTask = new TimerTask(){
-            @Override
-            public void run() {
-                getMyLocation();
-                getJSON();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        count.start();
-                    }
-                });
-            }
-        };
-        timer.schedule(responseTask, 0, 60*1000);
-
-    }
 
     private void setupMap() {
-
             mMap.clear();
             markers.clear();
-
-
         for (UBike uBike : uBikes) {
             LatLng latLng = new LatLng(Double.valueOf(uBike.getLat()), Double.valueOf(uBike.getLng()));
             Marker marker =  mMap.addMarker(new MarkerOptions().position(latLng).title(uBike.getSna())
@@ -342,9 +326,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
             }
         }
-
         mMap.setInfoWindowAdapter(new InfoWindowAdapter(MapsActivity.this));
-
         mMap.setOnMarkerClickListener(this);
 
     }

@@ -66,9 +66,9 @@ public class FavoriteActivity extends AppCompatActivity {
     private TextView timerText;
     private CountDownTimer count;
     private Button mapButton;
-    private List<UBike> newList = new ArrayList<>();
+    private List<UBike> starList = new ArrayList<>();
     private List<UBike> uBikesNewTaipei;
-    private int listIndex;
+    private List<UBike> updateList = new ArrayList<>();
 
 
     @Override
@@ -84,8 +84,8 @@ public class FavoriteActivity extends AppCompatActivity {
         setupDownCounterTimer();
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new BikeAdapter(newList , FavoriteActivity.this);
-        recyclerView.setAdapter(adapter);
+
+
         responseTask = new TimerTask(){
             @Override
             public void run() {
@@ -134,34 +134,7 @@ public class FavoriteActivity extends AppCompatActivity {
         mapButton = findViewById(R.id.button_map_favorite);
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        timer.cancel();
-        count.cancel();
-    }
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        Timer timer = new Timer();
-        TimerTask responseTask = new TimerTask(){
-            @Override
-            public void run() {
-                getMyLocation();
-                getJSON();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        count.start();
-                    }
-                });
 
-
-            }
-        };
-
-        timer.schedule(responseTask, 0, 60*1000);
-    }
 
     private void getJSON() {
         CountDownLatch latch = new CountDownLatch(1);  //指定等待多少執行緒
@@ -185,8 +158,15 @@ public class FavoriteActivity extends AppCompatActivity {
 
                 uBikesNewTaipei = new Gson().fromJson(newTaipeiJson,
                          new TypeToken<ArrayList<UBike>>(){}.getType());
+                for (int i = 0; i < uBikesNewTaipei.size()-1; i++) {
+                    String act = uBikesNewTaipei.get(i).getAct();
+                    if(act.equals("0")){
+                        uBikesNewTaipei.remove(i);
+                    }
+                }
+                updateList = uBikesNewTaipei;
                 latch.countDown();
-                Log.d(TAG, "onResponse2: " + uBikesNewTaipei.size());
+                Log.d(TAG, "onResponse2: " + updateList.size());
 
             }
         });
@@ -213,14 +193,11 @@ public class FavoriteActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
                 Log.d(TAG, "onResponse1:" + uBikes.size());
-                if(flag){
-                    uBikes.addAll(uBikesNewTaipei);
-                }else{
-                    for (UBike uBike : uBikesNewTaipei) {
-                        uBikes.set(listIndex,uBike);
-                        listIndex++;
-                    }
-                }
+
+                //增加下一筆資料
+
+                uBikes.addAll(updateList);
+
                 Log.d(TAG, "onResponse1: " + uBikes.size());
 
                  //設定距離
@@ -238,30 +215,27 @@ public class FavoriteActivity extends AppCompatActivity {
                     }
                 }
 
+                Collections.sort(uBikes, new bikeSort()); //依距離做排序
 
-                int i = 0;
+                starList.clear();
                 for (UBike uBike : uBikes) {
-                    if(flag){                      //第一次執行
-                        if(uBike.isStar()){         //將star為true的資料加入新的list
-                            newList.add(uBike);
-                    }
-                    }else {
-                        if(uBike.isStar()){  //第二次執行
-                            newList.set(i,uBike);
-                            i++;
-                        }
+                    if(uBike.isStar()){         //將star為true的資料加入新的list
+                        starList.add(uBike);
                     }
 
                 }
-                Collections.sort(newList, new bikeSort()); //依距離做排序
 
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         if(flag) {
-                            adapter.notifyDataSetChanged();
+                            updateList=starList;
+                            adapter = new BikeAdapter(updateList , FavoriteActivity.this);
+                            recyclerView.setAdapter(adapter);
                             flag = false;
                         }else {
+                            updateList = starList;
+                            Log.d(TAG, "run: " + updateList.size());
                             adapter.notifyDataSetChanged();
 
                         }
@@ -278,12 +252,10 @@ public class FavoriteActivity extends AppCompatActivity {
 
 
     private  void parseJSONObject(JSONObject object) {
-
+        uBikes.clear();
         try {
             JSONObject object1 = object.getJSONObject("retVal");
-            listIndex = 0;
             for (int i = 0; i <= 404; i++) {
-
                 int n = 0;
                 n = 4 - (String.valueOf(i)).length(); //取得位數
                 String final_string = String.valueOf(i);
@@ -293,12 +265,10 @@ public class FavoriteActivity extends AppCompatActivity {
                 if (object1.has(final_string) && !object1.isNull(final_string)) { //判斷是否有這物件
                     JSONObject object2 = object1.getJSONObject(final_string);
                     UBike uBike = new UBike(object2);
-                    if(flag){
+                    if(uBike.getAct().equals("1")){
                         uBikes.add(uBike);
-                    }else {
-                        uBikes.set(listIndex,uBike);
-                        listIndex++;
                     }
+
                 }
             }
 

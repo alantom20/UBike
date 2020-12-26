@@ -77,6 +77,8 @@ public class BikesActivity extends AppCompatActivity {
     private Button favoriteButton;
     private List<UBike> uBikesNewTaipei = new ArrayList<>();
     private int listIndex;
+    private List<UBike> updateList;
+
 
 
     @Override
@@ -90,6 +92,7 @@ public class BikesActivity extends AppCompatActivity {
         //recycler
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
 
         responseTask = new TimerTask(){
             @Override
@@ -105,7 +108,9 @@ public class BikesActivity extends AppCompatActivity {
 
             }
         };
+
        timer.schedule(responseTask, 0, 60*1000);
+
        mapButton.setOnClickListener(new View.OnClickListener() {
            @Override
            public void onClick(View v) {
@@ -175,33 +180,15 @@ public class BikesActivity extends AppCompatActivity {
         favoriteButton = findViewById(R.id.button_favorite);
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        timer.cancel();
-        count.cancel();
-    }
+
+
+
     @Override
     protected void onRestart() {
         super.onRestart();
-        Timer timer = new Timer();
-        TimerTask responseTask = new TimerTask(){
-            @Override
-            public void run() {
-                getMyLocation();
-                getJSON();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        count.start();
-                    }
-                });
+        getMyLocation();
+        getJSON();
 
-
-            }
-        };
-
-        timer.schedule(responseTask, 0, 60*1000);
     }
 
     private void getJSON() {
@@ -227,8 +214,16 @@ public class BikesActivity extends AppCompatActivity {
 
                 uBikesNewTaipei = new Gson().fromJson(newTaipeiJson,
                         new TypeToken<ArrayList<UBike>>(){}.getType());
+                for (int i = 0; i < uBikesNewTaipei.size()-1; i++) {
+                    String act = uBikesNewTaipei.get(i).getAct();
+                    if(act.equals("0")){
+                        uBikesNewTaipei.remove(i);
+                    }
+                }
+                updateList = uBikesNewTaipei;
+
                 latch.countDown();
-                Log.d(TAG, "onResponse2: " + uBikesNewTaipei.size());
+                Log.d(TAG, "onResponse2: " + updateList.size());
 
             }
         });
@@ -254,27 +249,33 @@ public class BikesActivity extends AppCompatActivity {
                 parseJSONObject(object);
                 Log.d(TAG, "onResponse1: " + latitude + "/" +longitude);
                 try {
-                    latch.await();               //取得完下一筆資料再往下執行
+                    latch.await();               //取得完前一筆資料再往下執行
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                Log.d(TAG, "onResponse1:" + uBikes.size());
+
+
                 //加上第二筆資料
                 if(flag){
-                    uBikes.addAll(uBikesNewTaipei);
+                    uBikes.addAll(updateList);
                 }else{
-                    for (UBike uBike : uBikesNewTaipei) {
+                    for (UBike uBike : updateList) {
                         uBikes.set(listIndex,uBike);
                         listIndex++;
                     }
                 }
-                Log.d(TAG, "onResponse1: " + uBikes.size());
+//                Log.d(TAG, "onResponse: " + uBikes.get(673).getSna() + "/"+uBikes.get(673).getMday());
+                Log.d(TAG, "onResponse total:" + uBikes.size());
+
+
 
                 //addDistance
                 for (UBike uBike : uBikes) {
                     float distance = distanceBetween(Double.parseDouble(uBike.getLat()),Double.parseDouble(uBike.getLng()),latitude,longitude);
                     uBike.setDistance(distance);
                 }
+                //依距離排序
+                Collections.sort(uBikes, new bikeSort());
 
                 //getDatabaseList
                 List<Bike> results = BikeDatabase.getInstance(BikesActivity.this).bikeDao().getAll();
@@ -288,11 +289,6 @@ public class BikesActivity extends AppCompatActivity {
                     }
                 }
 
-
-
-                //依距離排序
-                Collections.sort(uBikes, new bikeSort());
-
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -301,7 +297,7 @@ public class BikesActivity extends AppCompatActivity {
                             recyclerView.setAdapter(adapter);
                             flag = false;
                         }else {
-                           adapter.notifyDataSetChanged();
+                            adapter.notifyDataSetChanged();
 
                         }
 
@@ -321,7 +317,6 @@ public class BikesActivity extends AppCompatActivity {
             JSONObject object1 = object.getJSONObject("retVal");
             listIndex = 0;
             for (int i = 0; i <= 404; i++) {
-
                 int n = 0;
                 n = 4 - (String.valueOf(i)).length(); //取得位數
                 String final_string = String.valueOf(i);
@@ -331,12 +326,15 @@ public class BikesActivity extends AppCompatActivity {
                 if (object1.has(final_string) && !object1.isNull(final_string)) { //判斷是否有這物件
                     JSONObject object2 = object1.getJSONObject(final_string);
                     UBike uBike = new UBike(object2);
-                    if(flag){
-                        uBikes.add(uBike);
-                    }else {
-                        uBikes.set(listIndex,uBike);
-                        listIndex++;
+                    if(uBike.getAct().equals("1")){
+                        if(flag){
+                            uBikes.add(uBike);
+                        }else {
+                            uBikes.set(listIndex,uBike);
+                            listIndex++;
+                        }
                     }
+
                 }
             }
 
@@ -463,10 +461,12 @@ public class BikesActivity extends AppCompatActivity {
                     startActivity(intent);
                 }
             });
-
-
+        }else {
+            finish();
         }
     }
+
+
 
 
 }
