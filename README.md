@@ -1,8 +1,9 @@
 
 
 # UBike 
- 使用Java語言、Room資料庫、Google Maps API,  
- 實作出單車租借即時動態查詢`地圖導航Android APP。
+單車租借即時動態查詢`地圖導航Android APP。
+使用Java語言、Room資料庫、Google Maps API,  
+
  
  功能:
 •提供雙北UBike站點資訊。  
