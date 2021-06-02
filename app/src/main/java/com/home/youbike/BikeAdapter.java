@@ -2,6 +2,7 @@ package com.home.youbike;
 
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,7 +24,9 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
     List<UBike> uBikes = new ArrayList<>();
     public BikeAdapter(List<UBike> uBikes,Context context) {
         this.context = context;
-        this.uBikes = uBikes;
+        if(uBikes != null){
+            this.uBikes = uBikes;
+        }
 
     }
 
@@ -60,8 +63,13 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
 
                 }else {
                     holder.loveImage.setImageResource(R.drawable.ic_love_empty);
-                    notifyItemRemoved(holder.getAdapterPosition());
-                    uBikes.remove(position);
+                    Log.d(TAG, "onClick: " + context.getClass().getSimpleName());
+                    if((context.getClass().getSimpleName()).equals("FavoriteActivity")){
+                        notifyItemRemoved(holder.getAdapterPosition());
+                        notifyItemRangeChanged(position, uBikes.size());
+                        uBikes.remove(position);
+                    }
+                    //  notifyDataSetChanged();
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -95,6 +103,7 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
                 context.startActivity(intent);
             }
         });
+        // holder.timeText.setText(uBike.getMday());
 
 
     }
@@ -118,9 +127,11 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
             distanceText = itemView.findViewById(R.id.text_distance);
             lendText = itemView.findViewById(R.id.text_lend);
             parkingText = itemView.findViewById(R.id.text_parking);
+//            timeText = itemView.findViewById(R.id.time_text);
 
 
         }
     }
+
 
 }
