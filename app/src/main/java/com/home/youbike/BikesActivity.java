@@ -96,25 +96,12 @@ public class BikesActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bikes);
         checkPermissions();
+
     }
 
     private void checkPermissions() {
         //check internet
-        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
-        if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() != NetworkInfo.State.CONNECTED &&
-                connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() != NetworkInfo.State.CONNECTED) {
-            final AlertDialog.Builder builderSingle = new AlertDialog.Builder(BikesActivity.this);
-            builderSingle.setIcon(R.drawable.error)
-                    .setTitle("無法連結到網路")
-                    .setCancelable(false)
-                    .setPositiveButton("確定", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            finish();
-                        }
-                    }).show();
-
-        }
+        checkInternet();
 
         //check location
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -125,6 +112,29 @@ public class BikesActivity extends AppCompatActivity {
         }
 
     }
+
+    private void checkInternet() {
+        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() != NetworkInfo.State.CONNECTED &&
+                connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState() != NetworkInfo.State.CONNECTED) {
+            final AlertDialog.Builder builderSingle = new AlertDialog.Builder(BikesActivity.this);
+            builderSingle.setIcon(R.drawable.error)
+                    .setTitle("無法連結到網路")
+                    .setCancelable(false)
+                    .setPositiveButton("確定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Intent intent = new Intent(Intent.ACTION_MAIN);
+                            intent.addCategory(Intent.CATEGORY_HOME);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                        }
+                    }).show();
+
+        }
+    }
+
+
 
     public void setupDownCounterTimer(){
         count = new CountDownTimer(60000, 1000) {
@@ -141,6 +151,7 @@ public class BikesActivity extends AppCompatActivity {
 
     }
 
+
     private void findViews() {
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_bike);
@@ -148,6 +159,7 @@ public class BikesActivity extends AppCompatActivity {
         mapButton = findViewById(R.id.button_map);
         favoriteButton = findViewById(R.id.button_favorite);
         bikeAd = findViewById(R.id.bike_adView);
+        getMyLocation();
         MobileAds.initialize(this, new OnInitializationCompleteListener() {
             @Override
             public void onInitializationComplete(InitializationStatus initializationStatus) {
@@ -196,17 +208,13 @@ public class BikesActivity extends AppCompatActivity {
     }
 
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        getMyLocation();
-    }
 
     @Override
     protected void onRestart() {
         super.onRestart();
         getMyLocation();
         getJSON();
+        checkInternet();
 
     }
 
@@ -450,11 +458,14 @@ public class BikesActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if(requestCode == REQUEST_CODE_LOCATION &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED){
-            findViews();
-        }else{
-            finish();
+        if (grantResults.length > 0){
+            if(requestCode == REQUEST_CODE_LOCATION &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                findViews();
+            }else{
+                finish();
+        }
+
         }
     }
 
