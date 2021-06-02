@@ -10,7 +10,8 @@ android {
         applicationId "com.home.youbike"
         minSdkVersion 19
         targetSdkVersion 29
-        versionCode 1
+        multiDexEnabled true
+        versionCode 7
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -42,6 +43,9 @@ dependencies {
     implementation "androidx.room:room-runtime:$room_version"
     implementation "androidx.room:room-common:$room_version"
     annotationProcessor "androidx.room:room-compiler:$room_version"
+    //ads
+    implementation 'com.google.android.gms:play-services-ads:19.6.0'
+    implementation 'androidx.multidex:multidex:2.0.1'
     implementation 'androidx.navigation:navigation-fragment:2.3.2'
     implementation 'androidx.navigation:navigation-ui:2.3.2'
     testImplementation 'junit:junit:4.+'

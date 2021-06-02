@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Youbike</string>
+    <string name="app_name">台北Youbike</string>
     <string name="title_activity_maps">Map</string>
-    <string name="title_activity_bikes">BikesActivity</string>
+    <string name="title_activity_bikes">台北Youbike</string>
     <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
     <string name="second_fragment_label">Second Fragment</string>

@@ -6,7 +6,7 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {Bike.class},version = 1)
+@Database(entities = {Bike.class},version = 1,exportSchema = false)
 public abstract class BikeDatabase extends RoomDatabase {
     public abstract BikeDao bikeDao();
     private static BikeDatabase instance = null;

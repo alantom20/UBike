@@ -13,8 +13,17 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.initialization.InitializationStatus;
+import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCanceledListener;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.gson.Gson;
@@ -78,6 +87,7 @@ public class BikesActivity extends AppCompatActivity {
     private List<UBike> uBikesNewTaipei = new ArrayList<>();
     private int listIndex;
     private List<UBike> updateList;
+    private AdView bikeAd;
 
 
 
@@ -85,51 +95,10 @@ public class BikesActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bikes);
-        findViews();
-        setSupportActionBar(toolbar);
-        setupDownCounterTimer();
-        if (checkPermissions()) return;
-        //recycler
-        recyclerView.setHasFixedSize(true);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-
-        responseTask = new TimerTask(){
-            @Override
-            public void run() {
-                getMyLocation();
-                getJSON();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        count.start();
-                    }
-                });
-
-            }
-        };
-
-       timer.schedule(responseTask, 0, 60*1000);
-
-       mapButton.setOnClickListener(new View.OnClickListener() {
-           @Override
-           public void onClick(View v) {
-               Intent intent = new Intent(BikesActivity.this,MapsActivity.class);
-               startActivity(intent);
-           }
-       });
-       favoriteButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(BikesActivity.this,FavoriteActivity.class);
-                startActivity(intent);
-            }
-        });
-
-
+        checkPermissions();
     }
 
-    private boolean checkPermissions() {
+    private void checkPermissions() {
         //check internet
         ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
         if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() != NetworkInfo.State.CONNECTED &&
@@ -144,17 +113,17 @@ public class BikesActivity extends AppCompatActivity {
                             finish();
                         }
                     }).show();
-            return true;
+
         }
 
         //check location
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
             ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_LOCATION);
-            return true;
+        }else{
+            findViews();
         }
-        return false;
+
     }
 
     public void setupDownCounterTimer(){
@@ -178,10 +147,60 @@ public class BikesActivity extends AppCompatActivity {
         timerText = findViewById(R.id.timer_text);
         mapButton = findViewById(R.id.button_map);
         favoriteButton = findViewById(R.id.button_favorite);
+        bikeAd = findViewById(R.id.bike_adView);
+        MobileAds.initialize(this, new OnInitializationCompleteListener() {
+            @Override
+            public void onInitializationComplete(InitializationStatus initializationStatus) {
+            }
+        });
+        AdRequest adRequest = new AdRequest.Builder().build();
+        bikeAd.loadAd(adRequest);
+        setSupportActionBar(toolbar);
+        setupDownCounterTimer();
+        //recycler
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        responseTask = new TimerTask(){
+            @Override
+            public void run() {
+                getJSON();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        count.start();
+                    }
+                });
+
+            }
+        };
+
+        timer.schedule(responseTask, 0, 60*1000);
+
+        mapButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(BikesActivity.this,MapsActivity.class);
+                startActivity(intent);
+            }
+        });
+        favoriteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(BikesActivity.this,FavoriteActivity.class);
+                startActivity(intent);
+            }
+        });
+
+
     }
 
 
-
+    @Override
+    protected void onStart() {
+        super.onStart();
+        getMyLocation();
+    }
 
     @Override
     protected void onRestart() {
@@ -222,8 +241,10 @@ public class BikesActivity extends AppCompatActivity {
                 }
                 updateList = uBikesNewTaipei;
 
+
                 latch.countDown();
                 Log.d(TAG, "onResponse2: " + updateList.size());
+                Log.d(TAG, "onResponse2: " + updateList.get(0).getMday());
 
             }
         });
@@ -349,7 +370,6 @@ public class BikesActivity extends AppCompatActivity {
 
 
 
-
     }
 
 
@@ -382,21 +402,22 @@ public class BikesActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     public void getMyLocation() {
-
         FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient( this);
         client.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
-
             @Override
                 public void onComplete(@NonNull Task<Location> task) {
                     if(task.isSuccessful()){
                         Location location = task.getResult();
-                        Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
-                        longitude = location.getLongitude();
-                        latitude = location.getLatitude();
+                        if(location!=null){
+                            Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
+                            longitude = location.getLongitude();
+                            latitude = location.getLatitude();
+                        }
 
                     }
                 }
             });
+
     }
 
     @Override
@@ -431,37 +452,8 @@ public class BikesActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if(requestCode == REQUEST_CODE_LOCATION &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED){
-            recyclerView.setHasFixedSize(true);
-            recyclerView.setLayoutManager(new LinearLayoutManager(this));
-            responseTask = new TimerTask(){
-                @Override
-                public void run() {
-                    getMyLocation();
-                    getJSON();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            count.start();
-                        }
-                    });
-                }
-            };
-            timer.schedule(responseTask, 0, 60*1000);
-            mapButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(BikesActivity.this,MapsActivity.class);
-                    startActivity(intent);
-                }
-            });
-            favoriteButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(BikesActivity.this,FavoriteActivity.class);
-                    startActivity(intent);
-                }
-            });
-        }else {
+            findViews();
+        }else{
             finish();
         }
     }

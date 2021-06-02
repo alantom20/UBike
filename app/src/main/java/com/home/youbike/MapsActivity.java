@@ -23,6 +23,11 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.initialization.InitializationStatus;
+import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -84,6 +89,8 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private float distance;
     private List<UBike> uBikesNewTaipei;
     private List<UBike> updateList;
+    private AdView adView;
+    private CountDownLatch latchLocation;
 
 
     @Override
@@ -96,8 +103,15 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         title = getIntent().getStringExtra("title");
         distance = getIntent().getFloatExtra("distance",0);
         Log.d(TAG, "onCreate: " + lat + "/" + lng);
-
         findViews();
+        MobileAds.initialize(this, new OnInitializationCompleteListener() {
+            @Override
+            public void onInitializationComplete(InitializationStatus initializationStatus) {
+
+            }
+        });
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView.loadAd(adRequest);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
@@ -136,7 +150,13 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         final TimerTask responseTask = new TimerTask(){
             @Override
             public void run() {
+                latchLocation = new CountDownLatch(1);
                 getMyLocation();
+                try {
+                    latchLocation.await();               //取得完前一筆資料再往下執行
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 getJSON();
                 runOnUiThread(new Runnable() {
                     @Override
@@ -158,6 +178,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         mapButton = findViewById(R.id.button_googleMap);
         listButton = findViewById(R.id.button_list);
         distanceText = findViewById(R.id.map_distance);
+        adView = findViewById(R.id.map_adView);
     }
 
     public void setupDownCounterTimer(){
@@ -215,7 +236,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
         OkHttpClient client1 = new OkHttpClient();
         client1.newCall(requestTaipei).enqueue(new Callback() {
-            private String taipeiJson;
+
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
 
@@ -223,15 +244,15 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) {
-                taipeiJson = null;
+
                 try {
-                    taipeiJson = response.body().string();
+                    String taipeiJson = response.body().string();
+                    Log.d(TAG, "onResponse: " + taipeiJson);
+                    JSONObject object = parseJSON(taipeiJson);
+                    parseJSONObject(object);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                Log.d(TAG, "onResponse: " + taipeiJson);
-                JSONObject object = parseJSON(taipeiJson);
-                parseJSONObject(object);
                 try {
                     latch.await();
                 } catch (InterruptedException e) {
@@ -348,9 +369,12 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                 public void onComplete(@NonNull Task<Location> task) {
                     if(task.isSuccessful()){
                         Location location = task.getResult();
-                        Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude());
-                        myLatLng = new LatLng(location.getLatitude(),  location.getLongitude());
-                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, 16));
+                        if(location !=null){
+                            Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude());
+                            myLatLng = new LatLng(location.getLatitude(),  location.getLongitude());
+                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, 16));
+                        }
+
 
                     }
                 }
@@ -394,6 +418,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
                     Location location = task.getResult();
                     Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
                     myLatLng = new LatLng(location.getLatitude(),  location.getLongitude());
+                    latchLocation.countDown();
                 }
             }
         });

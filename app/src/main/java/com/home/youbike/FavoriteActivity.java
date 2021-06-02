@@ -6,6 +6,11 @@ import android.content.Intent;
 import android.location.Location;
 import android.os.Bundle;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.initialization.InitializationStatus;
+import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -69,6 +74,7 @@ public class FavoriteActivity extends AppCompatActivity {
     private List<UBike> starList = new ArrayList<>();
     private List<UBike> uBikesNewTaipei;
     private List<UBike> updateList = new ArrayList<>();
+    private AdView adView;
 
 
     @Override
@@ -77,6 +83,14 @@ public class FavoriteActivity extends AppCompatActivity {
         setContentView(R.layout.activity_favorite);
 
         findViews();
+        MobileAds.initialize(this, new OnInitializationCompleteListener() {
+            @Override
+            public void onInitializationComplete(InitializationStatus initializationStatus) {
+
+            }
+        });
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView.loadAd(adRequest);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
@@ -132,6 +146,7 @@ public class FavoriteActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recycler_favorite);
         timerText = findViewById(R.id.timer_text_favorite);
         mapButton = findViewById(R.id.button_map_favorite);
+        adView = findViewById(R.id.favorite_adView);
     }
 
 
