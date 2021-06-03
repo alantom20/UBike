@@ -95,11 +95,6 @@ public class BikesActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bikes);
-        checkPermissions();
-
-    }
-
-    private void checkPermissions() {
         //check internet
         checkInternet();
 
@@ -112,6 +107,7 @@ public class BikesActivity extends AppCompatActivity {
         }
 
     }
+
 
     private void checkInternet() {
         ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -297,7 +293,7 @@ public class BikesActivity extends AppCompatActivity {
                 Log.d(TAG, "onResponse total:" + uBikes.size());
 
 
-
+                getMyLocation();
                 //addDistance
                 for (UBike uBike : uBikes) {
                     float distance = distanceBetween(Double.parseDouble(uBike.getLat()),Double.parseDouble(uBike.getLng()),latitude,longitude);

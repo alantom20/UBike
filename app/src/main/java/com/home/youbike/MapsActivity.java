@@ -78,8 +78,8 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private String TAG = MapsActivity.class.getSimpleName();
     private List<UBike> uBikes = new ArrayList<>();
     private Timer timer = new Timer();
-    private double lat;
-    private double lng;
+    private double lat = 25.033998502835516;
+    private double lng = 121.56450245374178;
     private List<Marker> markers =  new ArrayList<>();;
     private TextView timerText;
     private CountDownTimer count;
@@ -109,8 +109,43 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         distance = getIntent().getFloatExtra("distance",0);
         Log.d(TAG, "onCreate: " + lat + "/" + lng);
         findViews();
+        MobileAds.initialize(this, new OnInitializationCompleteListener() {
+            @Override
+            public void onInitializationComplete(InitializationStatus initializationStatus) {
+
+            }
+        });
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView.loadAd(adRequest);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(MapsActivity.this::onMapReady);
+        setupDownCounterTimer();
+
+
+        listButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MapsActivity.this,BikesActivity.class);
+                startActivity(intent);
+            }
+        });
+
+
 
     }
+
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        checkInternet();
+    }
+
     private void checkInternet() {
         ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
         if(connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState() != NetworkInfo.State.CONNECTED &&
@@ -119,25 +154,11 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
             builderSingle.setIcon(R.drawable.error)
                     .setTitle("無法連結到網路")
                     .setCancelable(false)
-                    .setPositiveButton("確定", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Intent intent = new Intent(Intent.ACTION_MAIN);
-                            intent.addCategory(Intent.CATEGORY_HOME);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(intent);
-                        }
-                    }).show();
+                    .setPositiveButton("確定", null)
+                    .show();
 
         }
     }
-
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        checkInternet();
-    }
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -184,31 +205,6 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         listButton = findViewById(R.id.button_list);
         distanceText = findViewById(R.id.map_distance);
         adView = findViewById(R.id.map_adView);
-        MobileAds.initialize(this, new OnInitializationCompleteListener() {
-            @Override
-            public void onInitializationComplete(InitializationStatus initializationStatus) {
-
-            }
-        });
-        AdRequest adRequest = new AdRequest.Builder().build();
-        adView.loadAd(adRequest);
-        setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setDisplayShowHomeEnabled(true);
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(MapsActivity.this::onMapReady);
-        setupDownCounterTimer();
-
-
-        listButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MapsActivity.this,BikesActivity.class);
-                startActivity(intent);
-            }
-        });
     }
 
     public void setupDownCounterTimer(){
