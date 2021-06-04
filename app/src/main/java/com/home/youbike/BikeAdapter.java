@@ -100,6 +100,8 @@ public class BikeAdapter extends RecyclerView.Adapter<BikeAdapter.BikeHolder>{
                 intent.putExtra("lng",lng);
                 intent.putExtra("title",uBike.getSna());
                 intent.putExtra("distance",uBike.getDistance());
+                intent.putExtra("sbi",uBike.getSbi());
+                intent.putExtra("bemp",uBike.getBemp());
                 context.startActivity(intent);
             }
         });

@@ -96,13 +96,15 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private List<UBike> updateList;
     private AdView adView;
     private CountDownLatch latchLocation;
+    private String bemp;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-
+        String sbi = getIntent().getStringExtra("sbi");
+        bemp = getIntent().getStringExtra("bemp");
         lat = getIntent().getDoubleExtra("lat",0);
         lng = getIntent().getDoubleExtra("lng",0);
         title = getIntent().getStringExtra("title");
@@ -172,7 +174,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
         }
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(25.033976,121.5623502), 16));
         setupLocation(); //設定初始位置
-        setupMap();
+        //setupMap();
         final TimerTask responseTask = new TimerTask(){
             @Override
             public void run() {
@@ -360,6 +362,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
     private void setupMap() {
             mMap.clear();
             markers.clear();
+        mMap.setInfoWindowAdapter(new InfoWindowAdapter(MapsActivity.this));
         for (UBike uBike : uBikes) {
             LatLng latLng = new LatLng(Double.valueOf(uBike.getLat()), Double.valueOf(uBike.getLng()));
             Marker marker =  mMap.addMarker(new MarkerOptions().position(latLng).title(uBike.getSna())
@@ -373,7 +376,7 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
 
             }
         }
-        mMap.setInfoWindowAdapter(new InfoWindowAdapter(MapsActivity.this));
+
         mMap.setOnMarkerClickListener(this);
 
     }
@@ -442,8 +445,11 @@ public class MapsActivity extends AppCompatActivity implements  GoogleMap.OnMark
             public void onComplete(@NonNull Task<Location> task) {
                 if(task.isSuccessful()){
                     Location location = task.getResult();
-                    Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
-                    myLatLng = new LatLng(location.getLatitude(),  location.getLongitude());
+                    if(location!=null){
+                        Log.d(TAG, "onComplete: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
+                        myLatLng = new LatLng(location.getLatitude(),  location.getLongitude());
+
+                    }
                     latchLocation.countDown();
                 }
             }

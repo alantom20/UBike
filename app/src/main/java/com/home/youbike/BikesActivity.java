@@ -40,6 +40,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -61,6 +63,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 
+import io.nlopez.smartlocation.OnLocationUpdatedListener;
+import io.nlopez.smartlocation.SmartLocation;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -88,7 +92,9 @@ public class BikesActivity extends AppCompatActivity {
     private int listIndex;
     private List<UBike> updateList;
     private AdView bikeAd;
-
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
+    private FusedLocationProviderClient client;
 
 
     @Override
@@ -98,10 +104,11 @@ public class BikesActivity extends AppCompatActivity {
         //check internet
         checkInternet();
 
+
         //check location
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE_LOCATION);
+            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},REQUEST_CODE_LOCATION);
         }else{
             findViews();
         }
@@ -155,7 +162,8 @@ public class BikesActivity extends AppCompatActivity {
         mapButton = findViewById(R.id.button_map);
         favoriteButton = findViewById(R.id.button_favorite);
         bikeAd = findViewById(R.id.bike_adView);
-        getMyLocation();
+
+        startLocationUpdates();
         MobileAds.initialize(this, new OnInitializationCompleteListener() {
             @Override
             public void onInitializationComplete(InitializationStatus initializationStatus) {
@@ -185,6 +193,7 @@ public class BikesActivity extends AppCompatActivity {
 
         timer.schedule(responseTask, 0, 60*1000);
 
+
         mapButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -208,11 +217,24 @@ public class BikesActivity extends AppCompatActivity {
     @Override
     protected void onRestart() {
         super.onRestart();
-        getMyLocation();
+
+        startLocationUpdates();
         getJSON();
         checkInternet();
 
     }
+
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
+    }
+    private void stopLocationUpdates() {
+        client.removeLocationUpdates(locationCallback);
+    }
+
 
     private void getJSON() {
         CountDownLatch latch = new CountDownLatch(1);  //指定等待多少執行緒
@@ -293,7 +315,7 @@ public class BikesActivity extends AppCompatActivity {
                 Log.d(TAG, "onResponse total:" + uBikes.size());
 
 
-                getMyLocation();
+
                 //addDistance
                 for (UBike uBike : uBikes) {
                     float distance = distanceBetween(Double.parseDouble(uBike.getLat()),Double.parseDouble(uBike.getLng()),latitude,longitude);
@@ -405,8 +427,37 @@ public class BikesActivity extends AppCompatActivity {
 
 
     @SuppressLint("MissingPermission")
-    public void getMyLocation() {
-        FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient( this);
+    public void startLocationUpdates() {
+        client = LocationServices.getFusedLocationProviderClient( this);
+
+
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(2*5000);
+
+        locationCallback=new LocationCallback(){
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult == null) {
+                    return;
+                }
+                for (Location location : locationResult.getLocations()) {
+                    // if (location != null) {
+
+
+                    latitude = location.getLatitude();
+                    longitude = location.getLongitude();
+                    Log.d(TAG, "onComplete1: " + location.getLatitude() + "," + location.getLongitude()); //使用者位置
+
+                    //    }
+                }
+            }
+        };
+        client.requestLocationUpdates(locationRequest,
+                locationCallback,
+                Looper.getMainLooper());
+
+
         client.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
             @Override
                 public void onComplete(@NonNull Task<Location> task) {
@@ -421,7 +472,6 @@ public class BikesActivity extends AppCompatActivity {
                     }
                 }
             });
-
     }
 
     @Override
@@ -444,6 +494,8 @@ public class BikesActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+
+
     class bikeSort implements Comparator<UBike> {      //依距離做排序
 
         @Override
@@ -456,7 +508,8 @@ public class BikesActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length > 0){
             if(requestCode == REQUEST_CODE_LOCATION &&
-                    grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED &&
+            grantResults[1] == PackageManager.PERMISSION_GRANTED ){
                 findViews();
             }else{
                 finish();

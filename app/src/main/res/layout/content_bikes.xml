@@ -53,6 +53,7 @@
         app:layout_constraintStart_toEndOf="@+id/button_map" />
 
     <com.google.android.gms.ads.AdView
+        xmlns:ads="http://schemas.android.com/apk/res-auto"
         android:id="@+id/bike_adView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -62,7 +63,8 @@
         app:adUnitId="ca-app-pub-4885602207962479/2831121821"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent" >
+    </com.google.android.gms.ads.AdView>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
